@@ -2,15 +2,15 @@ import os
 
 import telebot
 from telebot.types import Message
+from groq import Groq
 
-from chatbot.ollama_client import OllamaModel
 from chatbot.prompter import Prompter
 
 token = os.environ.get("BOT_TOKEN", "")
 
 bot = telebot.TeleBot(token)
 prompter = Prompter()
-model = OllamaModel("llama-3.1")
+model = Groq()
 
 
 @bot.message_handler(commands=["start"])
@@ -29,10 +29,22 @@ def help(message: Message):
     if message.from_user is None:
         return
 
-    username = f"{message.from_user.first_name} {message.from_user.last_name}"
+    username = message.from_user.first_name
+    if message.from_user.last_name:
+        username += f" {message.from_user.last_name}"
     prompt = prompter.get_context(message=message.text, username=username)
-    response = model.get_response(prompt)
-    bot.send_message(message.chat.id, response, reply_to_message_id=message.id)
+    response = model.chat.completions.create(
+        messages=prompt, model="openai/gpt-oss-120b"
+    )
+    response_text = response.choices[0].message.content
+    if not response_text:
+        response_text = "razrab eblan"
+    bot.send_message(
+        message.chat.id,
+        response_text,
+        reply_to_message_id=message.id,
+        parse_mode="Markdown",
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from ollama import chat
 
+
 class OllamaModel:
     """
     Handles interactions with an Ollama model.
@@ -21,7 +22,9 @@ class OllamaModel:
         self.model_name = model_name
         self.unload_timer = unload
 
-    def get_response(self, messages: list[dict[str, str]], include_reasoning: bool = False) -> str:
+    def get_response(
+        self, messages: list[dict[str, str]], include_reasoning: bool = False
+    ) -> str:
         """
         Generates a response from an Ollama model based on input messages.
 
@@ -41,8 +44,8 @@ class OllamaModel:
             stream=False,
             keep_alive=self.unload_timer,  # keeps the model loaded for the specified time
             options={
-                'temperature': 1.0  # higher temperature for more creative responses
-            }
+                "temperature": 1.0  # higher temperature for more creative responses
+            },
         )
 
         result = response.message.content or ""

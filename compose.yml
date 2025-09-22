@@ -1,0 +1,4 @@
+name: chocolate-joe
+services:
+  telegram-bot:
+    build: .

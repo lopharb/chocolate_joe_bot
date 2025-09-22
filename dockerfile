@@ -10,6 +10,6 @@ RUN uv sync --locked
 
 RUN ls
 
-RUN . ./.venv/bin/activate
+RUN . .venv/bin/activate
 
-CMD ["python", "main.py"]
+CMD [".venv/bin/python", "main.py"]

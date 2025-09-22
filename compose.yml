@@ -1,0 +1,6 @@
+name: chocolate-joe
+services:
+  telegram-bot:
+    build: .
+    ports:
+      - "8000:8000"

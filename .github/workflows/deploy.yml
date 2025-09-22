@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [basic-CI/CD] # subject to change after finished
+    branches: [main]
 
 env:
   REGISTRY: ghcr.io

@@ -28,7 +28,7 @@ def help(message: Message):
         return
     if message.from_user is None:
         return
-    print("Received message. Generating response...")
+
     username = message.from_user.first_name
     if message.from_user.last_name:
         username += f" {message.from_user.last_name}"
@@ -48,5 +48,4 @@ def help(message: Message):
 
 
 if __name__ == "__main__":
-    print("Starting bot...")
     bot.polling()

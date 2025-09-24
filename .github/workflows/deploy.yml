@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main]
+    branches: [main, fully-auto-deploy]
 
 env:
   REGISTRY: ghcr.io
@@ -29,27 +29,38 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,
-            type=raw,value=latest
+      - name: Get commit info
+        id: commit
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --pretty=%s | tr -d '\n' | tr '[:space:]/' '_' | cut -c1-40)" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build services with Docker Compose (multi-arch)
+        run: |
+          # Enable buildx in compose
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+
+          # Build all services for multiple platforms
+          docker compose build --no-cache --progress=plain \
+            --build-arg BUILDKIT_INLINE_CACHE=1
+
+      - name: Push images with rich tags
+        run: |
+          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+
+          TAGS=(
+            "latest"
+            "${{ steps.commit.outputs.sha_short }}"
+            "${{ github.sha }}"
+            "branch-${{ github.ref_name }}"
+          )
+
+          if [[ ${{ github.ref }} == refs/tags/* ]]; then
+            TAGS+=("${{ github.ref_name }}")
+          fi
+
+          for tag in "${TAGS[@]}"; do
+            docker tag "$BASE_IMAGE:latest" "$BASE_IMAGE:$tag"
+            docker push "$BASE_IMAGE:$tag"
+          done

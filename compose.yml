@@ -1,8 +1,4 @@
+name: chocolate-joe
 services:
-  chocolate-joe:
-    build:
-      context: .
-      dockerfile: ./dockerfile
-    image: ghcr.io/lopharb/chocolate_joe_bot:latest
-    restart: unless-stopped
-    # ... other config
+  telegram-bot:
+    build: .

@@ -1,4 +1,17 @@
 name: chocolate-joe
 services:
   telegram-bot:
-    build: .
+    image: ghcr.io/lopharb/chocolate_joe_bot:latest
+    env_file:
+      - .env
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    restart: unless-stopped
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+    restart: unless-stopped

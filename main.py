@@ -16,5 +16,8 @@ if __name__ == "__main__":
     model = Groq()
 
     chocolate_joe = ChocolateJoe(bot, model, prompter, redis_db)
+    # TODO this should be async + I think we'll need a cli intrface for this at some point
+    chocolate_joe.clear_patchnote()
     chocolate_joe.notify()
+
     chocolate_joe.run_bot()

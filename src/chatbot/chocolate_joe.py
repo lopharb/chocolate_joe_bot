@@ -45,10 +45,31 @@ class ChocolateJoe:
 
         return False
 
+    def clear_patchnote(self):
+        self.redis_db.delete("patchnote")
+
+    def _get_patchnote(self) -> str:
+        with open("README.md", "r") as file:
+            readme = file.read()
+
+        existing = self.redis_db.get("patchnote")
+        if existing:
+            return existing
+
+        context = self.prompter.get_patchnote_context(readme)
+        response = self.llm.chat.completions.create(
+            messages=context, model="openai/gpt-oss-120b"
+        )
+        response_text = response.choices[0].message.content
+        self.redis_db.set("patchnote", response_text)
+
+        return response_text
+
     def _display_patchnote(self, chat_id):
+        text = self._get_patchnote()
         self.bot.send_message(
             chat_id,
-            "Sample text",
+            text,
             parse_mode="Markdown",
         )
 
@@ -77,6 +98,11 @@ class ChocolateJoe:
         # TODO move outside
         PRIVATE_HELP_MESSAGE = """
 Ahoy! Я Шоколадный Джо, рассказывай, что тебе от меня нужно?
+
+Команды, черт их возьми. Чтобы мне, Шоколадному Джо...🔇:
+- /start или /help - показать эту справку
+- /togglepatchnotes - включить или выключить уведомления об обновлениях от самого Шоколадного Джо
+- /patchnote - показать информацию о последнем обновлении
         """.strip()
         GROUP_HELP_MESSAGE = """
         Эй, я Шоколадный Джо! Я только вернулся с моря, а здесь чересчур шумно, так что захочешь поговорить — обращайся *по имени* или просто *@намекни*, чтобы я ответил. *Ответишь* на мои слова — я тоже в стороне не останусь.

@@ -7,8 +7,15 @@ class RedisDB:
         self.port = port
         self.client = redis.Redis(host=self.host, port=self.port)
 
-    def set(self, key, value):
+    def set(self, key, value, **kwargs):
         self.client.set(key, value)
+        # set ttl if any
+        if "ttl" in kwargs:
+            try:
+                ttl = int(kwargs["ttl"])
+                self.client.expire(key, ttl)
+            except ValueError:
+                print("WARNING: Provided ttl is not an integer")
 
     def get(self, key) -> str | None:
         value = self.client.get(key)

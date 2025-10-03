@@ -2,10 +2,13 @@ from telebot import TeleBot
 from telebot.types import Message
 
 from ..redis_db import RedisDB
+from .prompter import Prompter
 
 
 class ChocolateJoe:
-    def __init__(self, bot: TeleBot, llm, prompter, redis_db: RedisDB) -> None:
+    def __init__(
+        self, bot: TeleBot, llm, prompter: Prompter, redis_db: RedisDB
+    ) -> None:
         self.bot = bot
         self.llm = llm
         self.prompter = prompter
@@ -152,7 +155,9 @@ Ahoy! Я Шоколадный Джо, рассказывай, что тебе о
         if message.from_user.last_name:
             username += f" {message.from_user.last_name}"
 
-        prompt = self.prompter.get_context(message=message.text, username=username)
+        prompt = self.prompter.get_message_context(
+            message=message.text, username=username
+        )
         response = self.llm.chat.completions.create(
             messages=prompt, model="openai/gpt-oss-120b"
         )

@@ -1,12 +1,13 @@
 name: chocolate-joe
 services:
   telegram-bot:
-    image: ghcr.io/lopharb/chocolate_joe_bot:latest
+    build: .
     env_file:
       - .env
+    restart: unless-stopped
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    restart: unless-stopped
+
   watchtower:
     image: containrrr/watchtower
     volumes:
@@ -15,3 +16,11 @@ services:
       - WATCHTOWER_POLL_INTERVAL=300
       - WATCHTOWER_INCLUDE_RESTARTING=true
     restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"

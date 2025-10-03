@@ -1,21 +1,31 @@
-from telebot.types import Message
 from telebot import TeleBot
+from telebot.types import Message
+
+from .redis_db import RedisDB
 
 
 class ChocolateJoe:
-    def __init__(self, bot: TeleBot, llm, prompter) -> None:
+    def __init__(self, bot: TeleBot, llm, prompter, redis_db: RedisDB) -> None:
         self.bot = bot
         self.llm = llm
         self.prompter = prompter
+        self.redis_db = redis_db
         self.mentions = [
+            "🍫",
+            "джо",
             "шоколадный джо",
             "chocolate joe",
             f"@{self.bot.user.username}",
         ]
 
-        # TODO questionable pattern, may require changes
-        # resister the handlers
-        self.bot.message_handler(commands=["start"])(self.start_command)
+        command_handlers = {
+            "start": {"handler": self.start_command, "aliases": ["help"]},
+            "togglepatchnotes": {"handler": self.toggle_patchnotes},
+            "patchnote": {"handler": self.pathcnote},
+        }
+        for command, handler in command_handlers.items():
+            command_list = [command] + handler.get("aliases", [])
+            self.bot.message_handler(commands=command_list)(handler["handler"])
         self.bot.message_handler()(self.handle_message)
 
     def _needs_response(self, message: Message) -> bool:
@@ -35,16 +45,73 @@ class ChocolateJoe:
 
         return False
 
+    def _display_patchnote(self, chat_id):
+        self.bot.send_message(
+            chat_id,
+            "Sample text",
+            parse_mode="Markdown",
+        )
+
     def run_bot(self):
         self.bot.polling()
 
-    def start_command(self, message: Message):
-        self.bot.send_message(
-            message.chat.id, "Я Шоколадный Джо, и теперь в этом чате господствую я!"
+    def toggle_patchnotes(self, message: Message):
+        current = self.redis_db.get(f"notify:{message.chat.id}")
+        new = 0 if current == "1" else 1
+        text = (
+            "Аргх, матросы! Уведомления об обновлениях включены!"
+            if new
+            else "Apppp! Никаких больше патчноутов!"
         )
 
+        self.redis_db.set(f"notify:{message.chat.id}", new)
+
+        self.bot.send_message(
+            message.chat.id,
+            text,
+            reply_to_message_id=message.id,
+            parse_mode="Markdown",
+        )
+
+    def start_command(self, message: Message):
+        # TODO move outside
+        PRIVATE_HELP_MESSAGE = """
+Ahoy! Я Шоколадный Джо, рассказывай, что тебе от меня нужно?
+        """.strip()
+        GROUP_HELP_MESSAGE = """
+        Эй, я Шоколадный Джо! Я только вернулся с моря, а здесь чересчур шумно, так что захочешь поговорить — обращайся *по имени* или просто *@намекни*, чтобы я ответил. *Ответишь* на мои слова — я тоже в стороне не останусь.
+С кем попало я языком чесать не буду. Захватишь 🍫 шоколад — тогда другое дело.
+Понял? А теперь проваливай и дай мне допить свое какао!
+
+Команды, черт их возьми. Чтобы мне, Шоколадному Джо...🔇:
+- /start или /help - показать эту справку
+- /togglepatchnotes - включить или выключить уведомления об обновлениях от самого Шоколадного Джо
+- /patchnote - показать информацию о последнем обновлении
+        """.strip()
+
+        text = (
+            PRIVATE_HELP_MESSAGE
+            if message.chat.type == "private"
+            else GROUP_HELP_MESSAGE
+        )
+        self.bot.send_message(message.chat.id, text, parse_mode="Markdown")
+
+        previous_notif_setting = self.redis_db.get(f"notify:{message.chat.id}")
+        if previous_notif_setting is None:
+            self.redis_db.set(f"notify:{message.chat.id}", "1")
+
+    def pathcnote(self, message: Message):
+        chat_id = message.chat.id
+        self._display_patchnote(chat_id)
+
+    def notify(self):
+        for key in self.redis_db.get_keys_by_root("notify"):
+            chat_id = key.split(":")[1]
+            config = self.redis_db.get(key)
+            if config == "1":
+                self._display_patchnote(chat_id)
+
     def handle_message(self, message: Message) -> str | None:
-        # hacky but all the fields are optional
         # TODO figure out a better way
         try:
             if not self._needs_response(message):

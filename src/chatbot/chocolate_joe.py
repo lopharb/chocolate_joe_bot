@@ -1,7 +1,7 @@
 from telebot import TeleBot
 from telebot.types import Message
 
-from .redis_db import RedisDB
+from ..redis_db import RedisDB
 
 
 class ChocolateJoe:

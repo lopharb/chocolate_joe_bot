@@ -3,9 +3,9 @@ import os
 import telebot
 from groq import Groq
 
-from chatbot import ChocolateJoe
-from chatbot.prompter import Prompter
-from chatbot.redis_db import RedisDB
+from src.chatbot import ChocolateJoe
+from src.chatbot.prompter import Prompter
+from src.redis_db import RedisDB
 
 if __name__ == "__main__":
     token = os.environ.get("BOT_TOKEN", "")

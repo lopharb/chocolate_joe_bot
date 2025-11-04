@@ -1,7 +1,9 @@
-from groq.types.chat import (
-    ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
+from typing import List
+
+from langchain_core.messages import (
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
 )
 
 from .joe import SYSTEM_MESSAGE, USER_MESSAGE
@@ -21,22 +23,14 @@ class Prompter:
 
     def get_message_context(
         self, message: str, username: str
-    ) -> list[ChatCompletionMessageParam]:
+    ) -> List[BaseMessage]:
         context = [
-            ChatCompletionSystemMessageParam(
-                {
-                    "role": "system",
-                    "content": self.system_message,
-                }
-            ),
-            ChatCompletionUserMessageParam(
-                {
-                    "role": "user",
-                    "content": self.user_message.format(
-                        user_name=username,
-                        user_message=message,
-                    ),
-                }
+            SystemMessage(self.system_message),
+            HumanMessage(
+                self.user_message.format(
+                    user_name=username,
+                    user_message=message,
+                ),
             ),
         ]
 
@@ -46,24 +40,14 @@ class Prompter:
         chunks = readme.split("##")
         return "\n\n".join(chunks[:2])
 
-    # xd
-    # TODO prompter needs to go 4sure
-    def get_patchnote_context(self, readme: str):
+    def get_patchnote_context(self, readme: str) -> List[BaseMessage]:
         patchnote = self._prepare_readme(readme)
         context = [
-            ChatCompletionSystemMessageParam(
-                {
-                    "role": "system",
-                    "content": self.system_message,
-                }
-            ),
-            ChatCompletionUserMessageParam(
-                {
-                    "role": "user",
-                    "content": self.patchnote_message.format(
-                        patchnote=patchnote,
-                    ),
-                }
+            SystemMessage(self.system_message),
+            HumanMessage(
+                self.patchnote_message.format(
+                    patchnote=patchnote,
+                )
             ),
         ]
 

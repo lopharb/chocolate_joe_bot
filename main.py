@@ -1,8 +1,9 @@
 import os
 
 import telebot
-from groq import Groq
+from langchain_groq.chat_models import ChatGroq
 
+from src.agent.lc_agent import LCAgent
 from src.agent.prompts.prompter import Prompter
 from src.chocolate_joe import ChocolateJoe
 from src.database.redis_db import RedisClient
@@ -22,8 +23,9 @@ if __name__ == "__main__":
         bot = telebot.TeleBot(token)
         redis_db = RedisClient()
         prompter = Prompter()
-        model = Groq()
-        chocolate_joe = ChocolateJoe(bot, model, prompter, redis_db)
+        model = ChatGroq(model="openai/gpt-oss-120b")
+        agent = LCAgent(model, prompter, redis_db)
+        chocolate_joe = ChocolateJoe(bot, agent, redis_db)
     except Exception as e:
         logger.critical(f"Failed to set up underlying services: {e}")
         exit(1)

@@ -1,20 +1,23 @@
+import traceback
 from logging import getLogger
 
 from telebot import TeleBot
 from telebot.types import Message
 
+from .agent.lc_agent import LCAgent
 from .agent.prompts import command_messages as cm
-from .agent.prompts.prompter import Prompter
 from .database.redis_db import RedisClient
 
 
 class ChocolateJoe:
     def __init__(
-        self, bot: TeleBot, llm, prompter: Prompter, redis_db: RedisClient
+        self,
+        bot: TeleBot,
+        agent: LCAgent,
+        redis_db: RedisClient,
     ) -> None:
         self.bot = bot
-        self.llm = llm
-        self.prompter = prompter
+        self.agent = agent
         self.redis_db = redis_db
         self.mentions = [
             "🍫",
@@ -47,33 +50,41 @@ class ChocolateJoe:
                 return True
 
         if message.reply_to_message is not None:
+            if message.reply_to_message.from_user is None:
+                self._logger.warning("User not set for the message.")
+                return False
             if message.reply_to_message.from_user.id == self.bot.user.id:
                 return True
 
         return False
 
     def clear_patchnote(self):
+        self._logger.info("Clearing patchnote.")
         self.redis_db.delete("patchnote")
 
-    def _get_patchnote(self) -> str:
-        with open("README.md", "r") as file:
-            readme = file.read()
+    # def _get_patchnote(self) -> str:
+    #     self._logger.info("Checking for existing patchnote.")
+    #     existing = self.redis_db.get("patchnote")
+    #     if existing:
+    #         self._logger.info("Patchnote found. Reusing.")
+    #         return existing
 
-        existing = self.redis_db.get("patchnote")
-        if existing:
-            return existing
+    #     self._logger.info("Generating new patchnote.")
+    #     with open("README.md", "r") as file:
+    #         readme = file.read()
 
-        context = self.prompter.get_patchnote_context(readme)
-        response = self.llm.chat.completions.create(
-            messages=context, model="openai/gpt-oss-120b"
-        )
-        response_text = response.choices[0].message.content
-        self.redis_db.set("patchnote", response_text)
+    #     context = self.prompter.get_patchnote_context(readme)
+    #     response = self.agent.get_response(
+    #         messages=context, model="openai/gpt-oss-120b"
+    #     )
+    #     response_text = response.choices[0].message.content
+    #     self.redis_db.set("patchnote", response_text)
 
-        return response_text
+    #     return response_text
 
     def _display_patchnote(self, chat_id):
-        text = self._get_patchnote()
+        # text = self._get_patchnote()
+        text = "PATCHNOTES ARE DISABLED NOW"
         self.bot.send_message(
             chat_id,
             text,
@@ -89,6 +100,10 @@ class ChocolateJoe:
         text = cm.NOTIFS_ON if new else cm.NOTIFS_OFF
 
         self.redis_db.set(f"notify:{message.chat.id}", new)
+
+        self._logger.info(
+            f"Patchnotes set to {new} for chat {message.chat.id}."
+        )
 
         self.bot.send_message(
             message.chat.id,
@@ -114,7 +129,7 @@ class ChocolateJoe:
         self._display_patchnote(chat_id)
 
     def notify(self):
-        for key in self.redis_db.get_keys_by_root("notify"):
+        for key in self.redis_db.find("notify"):
             chat_id = key.split(":")[1]
             config = self.redis_db.get(key)
             if config == "1":
@@ -122,32 +137,32 @@ class ChocolateJoe:
 
     def handle_message(self, message: Message) -> str | None:
         # TODO figure out a better way
-        try:
-            if not self._needs_response(message):
-                return
-
-        except Exception:
+        if not self._needs_response(message):
             return
 
-        assert message.from_user is not None
-        assert message.text is not None
+        if not message.from_user:
+            self._logger.warning("User not set for the message.")
+            return
 
-        username = message.from_user.first_name
-        if message.from_user.last_name:
-            username += f" {message.from_user.last_name}"
+        try:
+            response = self.agent.get_response(message)
+            response_text = str(response.content)
 
-        prompt = self.prompter.get_message_context(
-            message=message.text, username=username
-        )
-        response = self.llm.chat.completions.create(
-            messages=prompt, model="openai/gpt-oss-120b"
-        )
-        response_text = response.choices[0].message.content
-        if not response_text:
-            response_text = "Респонса не будет, м."
-        self.bot.send_message(
-            chat_id=message.chat.id,
-            text=response_text,
-            reply_to_message_id=message.id,
-            parse_mode="Markdown",
-        )
+            if not response_text:
+                response_text = "Респонса не будет, м."
+        except Exception as e:
+            self._logger.error(
+                f"Encountered {e.__class__.__name__} while generating response: {traceback.format_exc()}, "
+            )
+
+        try:
+            self.bot.send_message(
+                chat_id=message.chat.id,
+                text=response_text,
+                reply_to_message_id=message.id,
+                parse_mode="Markdown",
+            )
+        except Exception as e:
+            self._logger.error(
+                f"Encountered {e.__class__.__name__} while sending message: {traceback.format_exc()}, "
+            )

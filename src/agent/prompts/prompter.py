@@ -1,10 +1,10 @@
-from .prompt import SYSTEM_MESSAGE, USER_MESSAGE, PATCHNOTE_BUILD_MESSAGE
-
 from groq.types.chat import (
+    ChatCompletionMessageParam,
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
-    ChatCompletionMessageParam,
 )
+
+from .prompt import PATCHNOTE_BUILD_MESSAGE, SYSTEM_MESSAGE, USER_MESSAGE
 
 
 class Prompter:

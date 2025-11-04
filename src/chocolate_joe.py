@@ -1,13 +1,14 @@
 from telebot import TeleBot
 from telebot.types import Message
 
-from ..redis_db import RedisDB
-from .prompter import Prompter
+from .agent.prompts import command_messages as cm
+from .agent.prompts.prompter import Prompter
+from .database.redis_db import RedisClient
 
 
 class ChocolateJoe:
     def __init__(
-        self, bot: TeleBot, llm, prompter: Prompter, redis_db: RedisDB
+        self, bot: TeleBot, llm, prompter: Prompter, redis_db: RedisClient
     ) -> None:
         self.bot = bot
         self.llm = llm
@@ -76,17 +77,13 @@ class ChocolateJoe:
             parse_mode="Markdown",
         )
 
-    def run_bot(self):
+    def start_polling(self):
         self.bot.polling()
 
     def toggle_patchnotes(self, message: Message):
         current = self.redis_db.get(f"notify:{message.chat.id}")
         new = 0 if current == "1" else 1
-        text = (
-            "Аргх, матросы! Уведомления об обновлениях включены!"
-            if new
-            else "Apppp! Никаких больше патчноутов!"
-        )
+        text = cm.NOTIFS_ON if new else cm.NOTIFS_OFF
 
         self.redis_db.set(f"notify:{message.chat.id}", new)
 
@@ -98,30 +95,10 @@ class ChocolateJoe:
         )
 
     def start_command(self, message: Message):
-        # TODO move outside
-        PRIVATE_HELP_MESSAGE = """
-Ahoy! Я Шоколадный Джо, рассказывай, что тебе от меня нужно?
-
-Команды, черт их возьми. Чтобы мне, Шоколадному Джо...🔇:
-- /start или /help - показать эту справку
-- /togglepatchnotes - включить или выключить уведомления об обновлениях от самого Шоколадного Джо
-- /patchnote - показать информацию о последнем обновлении
-        """.strip()
-        GROUP_HELP_MESSAGE = """
-        Эй, я Шоколадный Джо! Я только вернулся с моря, а здесь чересчур шумно, так что захочешь поговорить — обращайся *по имени* или просто *@намекни*, чтобы я ответил. *Ответишь* на мои слова — я тоже в стороне не останусь.
-С кем попало я языком чесать не буду. Захватишь 🍫 шоколад — тогда другое дело.
-Понял? А теперь проваливай и дай мне допить свое какао!
-
-Команды, черт их возьми. Чтобы мне, Шоколадному Джо...🔇:
-- /start или /help - показать эту справку
-- /togglepatchnotes - включить или выключить уведомления об обновлениях от самого Шоколадного Джо
-- /patchnote - показать информацию о последнем обновлении
-        """.strip()
-
         text = (
-            PRIVATE_HELP_MESSAGE
+            cm.PRIVATE_HELP_MESSAGE
             if message.chat.type == "private"
-            else GROUP_HELP_MESSAGE
+            else cm.GROUP_HELP_MESSAGE
         )
         self.bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
@@ -145,6 +122,7 @@ Ahoy! Я Шоколадный Джо, рассказывай, что тебе о
         try:
             if not self._needs_response(message):
                 return
+
         except Exception:
             return
 
@@ -165,8 +143,8 @@ Ahoy! Я Шоколадный Джо, рассказывай, что тебе о
         if not response_text:
             response_text = "Респонса не будет, м."
         self.bot.send_message(
-            message.chat.id,
-            response_text,
+            chat_id=message.chat.id,
+            text=response_text,
             reply_to_message_id=message.id,
             parse_mode="Markdown",
         )

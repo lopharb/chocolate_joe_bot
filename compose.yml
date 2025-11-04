@@ -1,13 +1,5 @@
 name: chocolate-joe
 services:
-  telegram-bot:
-    build: .
-    env_file:
-      - .env
-    restart: unless-stopped
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-
   watchtower:
     image: containrrr/watchtower
     volumes:
@@ -24,3 +16,11 @@ services:
     restart: unless-stopped
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
+
+  telegram-bot:
+    build: .
+    env_file:
+      - .env
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"

@@ -1,3 +1,5 @@
+from logging import getLogger
+
 from telebot import TeleBot
 from telebot.types import Message
 
@@ -21,6 +23,7 @@ class ChocolateJoe:
             "chocolate joe",
             f"@{self.bot.user.username}",
         ]
+        self._logger = getLogger("chocolate-joe")
 
         command_handlers = {
             "start": {"handler": self.start_command, "aliases": ["help"]},

@@ -4,7 +4,8 @@ from groq.types.chat import (
     ChatCompletionUserMessageParam,
 )
 
-from .prompt import PATCHNOTE_BUILD_MESSAGE, SYSTEM_MESSAGE, USER_MESSAGE
+from .joe import SYSTEM_MESSAGE, USER_MESSAGE
+from .tasks import PATCHNOTE_BUILD_MESSAGE
 
 
 class Prompter:

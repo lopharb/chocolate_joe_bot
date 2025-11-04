@@ -9,6 +9,7 @@ dependencies = [
     "anyio==4.9.0",
     "certifi==2025.4.26",
     "charset-normalizer==3.4.2",
+    "colorama>=0.4.6",
     "groq>=0.31.1",
     "h11==0.16.0",
     "httpcore==1.0.9",

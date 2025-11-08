@@ -3,11 +3,26 @@ import time
 from typing import Iterable, List
 from uuid import uuid4
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+    FunctionMessage,
+)
 from redis import Redis
 
 
 class RedisHistoryManager:
+    message_type_mapping = {
+        "ai": AIMessage,
+        "human": HumanMessage,
+        "system": SystemMessage,
+        "tool": ToolMessage,
+        "function": FunctionMessage,
+    }
+
     def __init__(self, redis_db: Redis, prefix: str = "history"):
         self.redis_db = redis_db
         self.prefix = prefix
@@ -18,7 +33,7 @@ class RedisHistoryManager:
         key = f"{self.prefix}:{chat_id}:{message_id}"
         value = {
             "content": message.text,
-            "role": "ai" if isinstance(message, HumanMessage) else "user",
+            "role": message.type,
             "timestamp": int(time.time() * 1000),
         }
 
@@ -35,9 +50,7 @@ class RedisHistoryManager:
         keys = self.redis_db.keys(f"{self.prefix}:{chat_id}:*")
 
         if not keys or not isinstance(keys, Iterable):
-            self.logger.info(
-                f"Retrieved {len(history)} messages for chat {chat_id}."
-            )
+            self.logger.info(f"Retrieved {len(history)} messages for chat {chat_id}.")
             return history
 
         for key in keys:
@@ -49,12 +62,13 @@ class RedisHistoryManager:
         history.sort(key=lambda x: x["timestamp"])
 
         for idx, message in enumerate(history):
-            if message["role"] == "user":
-                history[idx] = HumanMessage(content=message["content"])
-            elif message["role"] == "ai":
-                history[idx] = AIMessage(content=message["content"])
+            role = message["role"]
+            msg_type = RedisHistoryManager.message_type_mapping.get(role)
+            if not msg_type:
+                self.logger.warning("Invalid message type.")
+                continue
 
-        self.logger.info(
-            f"Retrieved {len(history)} messages for chat {chat_id}."
-        )
+            history[idx] = msg_type(content=message["content"])
+
+        self.logger.info(f"Retrieved {len(history)} messages for chat {chat_id}.")
         return history

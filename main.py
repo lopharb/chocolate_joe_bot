@@ -34,12 +34,5 @@ if __name__ == "__main__":
         logger.critical(f"Failed to set up underlying services: {e}")
         exit(1)
 
-    # TODO this should be async + I think we'll need a cli intrface for this at some point
-    logger.info("Resetting patchnote.")
-    chocolate_joe.clear_patchnote()
-
-    logger.info("Notifying users.")
-    chocolate_joe.notify()
-
     logger.info("Starting polling.")
     chocolate_joe.start_polling()

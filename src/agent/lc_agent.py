@@ -24,9 +24,7 @@ class LCAgent:
         self.history_ttl = history_ttl
         self._logger = logging.getLogger("chocolate-joe")
 
-    def get_chat_context(
-        self, chat_id: int, message_text: str
-    ) -> List[BaseMessage]:
+    def get_chat_context(self, chat_id: int, message_text: str) -> List[BaseMessage]:
         history = self.redis_hm.get_chat_history(chat_id)
         # TODO: should remove the prompter atp
         message_context = self.prompter.get_message_context(message_text)
@@ -36,16 +34,28 @@ class LCAgent:
 
         return full_context
 
-    def get_response(self, message: Message) -> AIMessage:
+    def generate_patchnote(self) -> AIMessage:
+        self._logger.info("Generating new patchnote.")
+        with open("README.md", "r") as file:
+            readme = file.read()
+        context = self.prompter.get_patchnote_context(readme)
+
+        return self.llm.invoke(context)
+
+    def handle_message(
+        self, message: Message, needs_response: bool
+    ) -> AIMessage | None:
         text = f"**{message.from_user.full_name}**: \n{message.text}"
         self.redis_hm.store_message(
             HumanMessage(content=text),
             message.chat.id,
-            5 * 60,
+            self.history_ttl,
         )
+        if not needs_response:
+            return None
 
         context = self.get_chat_context(message.chat.id, text)
         response = self.llm.invoke(context)
-        self.redis_hm.store_message(response, message.chat.id, 5 * 60)
+        self.redis_hm.store_message(response, message.chat.id, self.history_ttl)
 
         return response

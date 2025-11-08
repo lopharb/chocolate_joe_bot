@@ -1,4 +1,3 @@
-import traceback
 from logging import getLogger
 
 from telebot import TeleBot
@@ -62,28 +61,21 @@ class ChocolateJoe:
         self._logger.info("Clearing patchnote.")
         self.redis_db.delete("patchnote")
 
-    # def _get_patchnote(self) -> str:
-    #     self._logger.info("Checking for existing patchnote.")
-    #     existing = self.redis_db.get("patchnote")
-    #     if existing:
-    #         self._logger.info("Patchnote found. Reusing.")
-    #         return existing
+    def _get_patchnote(self) -> str:
+        self._logger.info("Checking for existing patchnote.")
+        existing = self.redis_db.get("patchnote")
+        if existing:
+            self._logger.info("Patchnote found. Reusing.")
+            return existing
 
-    #     self._logger.info("Generating new patchnote.")
-    #     with open("README.md", "r") as file:
-    #         readme = file.read()
+        generated_patchnote = self.agent.generate_patchnote()
+        self.redis_db.set("patchnote", generated_patchnote.content)
+        patchnote_text = str(generated_patchnote.content)
 
-    #     context = self.prompter.get_patchnote_context(readme)
-    #     response = self.agent.get_response(
-    #         messages=context, model="openai/gpt-oss-120b"
-    #     )
-    #     response_text = response.choices[0].message.content
-    #     self.redis_db.set("patchnote", response_text)
-
-    #     return response_text
+        return patchnote_text
 
     def _display_patchnote(self, chat_id):
-        # text = self._get_patchnote()
+        text = self._get_patchnote()
         text = "PATCHNOTES ARE DISABLED NOW"
         self.bot.send_message(
             chat_id,
@@ -101,9 +93,7 @@ class ChocolateJoe:
 
         self.redis_db.set(f"notify:{message.chat.id}", new)
 
-        self._logger.info(
-            f"Patchnotes set to {new} for chat {message.chat.id}."
-        )
+        self._logger.info(f"Patchnotes set to {new} for chat {message.chat.id}.")
 
         self.bot.send_message(
             message.chat.id,
@@ -136,24 +126,12 @@ class ChocolateJoe:
                 self._display_patchnote(chat_id)
 
     def handle_message(self, message: Message) -> str | None:
-        # TODO figure out a better way
-        if not self._needs_response(message):
+        needs_response = self._needs_response(message)
+        response = self.agent.handle_message(message, needs_response)
+        if response is None:
             return
 
-        if not message.from_user:
-            self._logger.warning("User not set for the message.")
-            return
-
-        try:
-            response = self.agent.get_response(message)
-            response_text = str(response.content)
-
-            if not response_text:
-                response_text = "Респонса не будет, м."
-        except Exception as e:
-            self._logger.error(
-                f"Encountered {e.__class__.__name__} while generating response: {traceback.format_exc()}, "
-            )
+        response_text = str(response.content)
 
         try:
             self.bot.send_message(
@@ -164,5 +142,5 @@ class ChocolateJoe:
             )
         except Exception as e:
             self._logger.error(
-                f"Encountered {e.__class__.__name__} while sending message: {traceback.format_exc()}, "
+                f"Encountered {e.__class__.__name__} while sending message: {e}."
             )

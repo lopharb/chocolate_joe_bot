@@ -21,14 +21,11 @@ class Prompter:
         self.user_message = user_message
         self.patchnote_message = patchnote_message
 
-    def get_message_context(
-        self, message: str, username: str
-    ) -> List[BaseMessage]:
+    def get_message_context(self, message: str) -> List[BaseMessage]:
         context = [
             SystemMessage(self.system_message),
             HumanMessage(
                 self.user_message.format(
-                    user_name=username,
                     user_message=message,
                 ),
             ),

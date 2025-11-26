@@ -76,7 +76,6 @@ class ChocolateJoe:
 
     def _display_patchnote(self, chat_id):
         text = self._get_patchnote()
-        text = "PATCHNOTES ARE DISABLED NOW"
         self.bot.send_message(
             chat_id,
             text,

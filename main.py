@@ -34,5 +34,8 @@ if __name__ == "__main__":
         logger.critical(f"Failed to set up underlying services: {e}")
         exit(1)
 
+    chocolate_joe.clear_patchnote()
+    chocolate_joe.notify()
+
     logger.info("Starting polling.")
     chocolate_joe.start_polling()
